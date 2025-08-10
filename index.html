@@ -4,60 +4,137 @@
   <meta charset="UTF-8">
   <title>Suivi des tontes du château</title>
   <style>
-    body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
-    .zone { background: white; padding: 15px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    button { margin-top: 10px; }
-    textarea { width: 100%; height: 60px; margin-top: 5px; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background-color: #f5f5f5;
+    }
+    h1 {
+      color: #2c3e50;
+    }
+    .zone {
+      background-color: #ffffff;
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    input, textarea, button {
+      margin-top: 5px;
+      display: block;
+    }
   </style>
 </head>
 <body>
-  <h1>Suivi des tontes</h1>
+
+  <h1>🌿 Suivi des tontes du château</h1>
   <div id="zones-container"></div>
 
+  <h2>➕ Ajouter une tonte</h2>
+  <label for="zone-select">Zone :</label>
+  <select id="zone-select"></select>
+
+  <label for="date-input">Date :</label>
+  <input type="date" id="date-input">
+
+  <label for="commentaire-input">Commentaire :</label>
+  <textarea id="commentaire-input" rows="3" cols="40"></textarea>
+
+  <button onclick="ajouterTonte()">Ajouter</button>
+
   <script>
-    let data;
+    // 🌱 Données JSON intégrées
+    const data = {
+      zones: [
+        {
+          nom: "Allée des tilleuls",
+          historique: [
+            { date: "2025-08-01", commentaire: "Sol sec, tonte facile" },
+            { date: "2025-08-09", commentaire: "Sol humide, passage difficile" }
+          ]
+        },
+        {
+          nom: "Bosquet nord",
+          historique: [
+            { date: "2025-08-07", commentaire: "Machine en panne, reporté" }
+          ]
+        },
+        {
+          nom: "Jardin à la française",
+          historique: []
+        },
+        {
+          nom: "Prairie sud",
+          historique: [
+            { date: "2025-08-05", commentaire: "Tonte complète, aucun souci" }
+          ]
+        }
+      ]
+    };
 
-    // Charger le JSON
-    fetch('suivi_tonte.json')
-      .then(response => response.json())
-      .then(json => {
-        data = json;
-        afficherZones(data.zones);
-      });
+    // 🖼️ Affichage des zones et de leur historique
+    function afficherZones() {
+      const container = document.getElementById("zones-container");
+      container.innerHTML = "";
 
-    function afficherZones(zones) {
-      const container = document.getElementById('zones-container');
-      container.innerHTML = '';
+      data.zones.forEach(zone => {
+        const zoneDiv = document.createElement("div");
+        zoneDiv.className = "zone";
+        zoneDiv.innerHTML = `<h3>${zone.nom}</h3>`;
 
-      zones.forEach((zone, index) => {
-        const div = document.createElement('div');
-        div.className = 'zone';
+        if (zone.historique.length > 0) {
+          const ul = document.createElement("ul");
+          zone.historique.forEach(entry => {
+            const li = document.createElement("li");
+            li.textContent = `${entry.date} — ${entry.commentaire}`;
+            ul.appendChild(li);
+          });
+          zoneDiv.appendChild(ul);
+        } else {
+          zoneDiv.innerHTML += "<p>Aucune tonte enregistrée.</p>";
+        }
 
-        div.innerHTML = `
-          <h3>${zone.nom}</h3>
-          <p>Date de tonte : <span id="date-${index}">${zone.date_tonte || '—'}</span></p>
-          <textarea id="comment-${index}" placeholder="Commentaire...">${zone.commentaire}</textarea>
-          <button onclick="mettreAJour(${index})">Tondue aujourd’hui</button>
-        `;
-
-        container.appendChild(div);
+        container.appendChild(zoneDiv);
       });
     }
 
-    function mettreAJour(index) {
-      const today = new Date().toISOString().split('T')[0];
-      const commentaire = document.getElementById(`comment-${index}`).value;
-
-      // Mettre à jour les données
-      data.zones[index].date_tonte = today;
-      data.zones[index].commentaire = commentaire;
-
-      // Mettre à jour l'affichage
-      document.getElementById(`date-${index}`).innerText = today;
-
-      console.log("Mise à jour :", data.zones[index]);
-      // Ici tu pourrais envoyer les données vers un serveur ou les sauvegarder
+    // 🧩 Remplir la liste déroulante
+    function remplirSelect() {
+      const select = document.getElementById("zone-select");
+      data.zones.forEach(zone => {
+        const option = document.createElement("option");
+        option.value = zone.nom;
+        option.textContent = zone.nom;
+        select.appendChild(option);
+      });
     }
+
+    // 📝 Ajouter une nouvelle tonte
+    function ajouterTonte() {
+      const nomZone = document.getElementById("zone-select").value;
+      const nouvelleDate = document.getElementById("date-input").value;
+      const nouveauCommentaire = document.getElementById("commentaire-input").value;
+
+      if (!nouvelleDate) {
+        alert("Veuillez entrer une date.");
+        return;
+      }
+
+      const zone = data.zones.find(z => z.nom === nomZone);
+      zone.historique.push({ date: nouvelleDate, commentaire: nouveauCommentaire });
+      document.getElementById("date-input").value = "";
+      document.getElementById("commentaire-input").value = "";
+      afficherZones();
+    }
+
+    // 🚀 Initialisation
+    remplirSelect();
+    afficherZones();
   </script>
+
 </body>
 </html>
+
