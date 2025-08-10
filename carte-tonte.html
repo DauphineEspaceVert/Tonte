@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Carte interactive - Château La Dauphine</title>
+  <title>Carte de tonte - Château La Dauphine</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- Leaflet CSS -->
@@ -22,11 +22,10 @@
       border-radius: 8px;
       box-shadow: 0 0 5px rgba(0,0,0,0.3);
       z-index: 1000;
-      max-width: 250px;
+      max-width: 300px;
     }
-    #editBtn {
+    .btn {
       position: absolute;
-      top: 10px;
       left: 10px;
       z-index: 1000;
       padding: 8px 12px;
@@ -35,16 +34,20 @@
       border: none;
       border-radius: 6px;
       cursor: pointer;
+      margin-bottom: 5px;
     }
-    #editBtn:hover {
-      background: #005fa3;
-    }
+    .btn:hover { background: #005fa3; }
+    #editBtn { top: 10px; }
+    #exportBtn { top: 50px; background: #28a745; }
+    #resetBtn { top: 90px; background: #dc3545; }
   </style>
 </head>
 <body>
 
-<button id="editBtn">🛠️ Mode édition</button>
-<div id="info">Clique sur une zone pour voir ses infos.</div>
+<button id="editBtn" class="btn">🛠️ Mode édition</button>
+<button id="exportBtn" class="btn">📤 Exporter GeoJSON</button>
+<button id="resetBtn" class="btn">❌ Réinitialiser</button>
+<div id="info">Clique sur une zone pour voir son historique.</div>
 <div id="map"></div>
 
 <!-- Leaflet JS -->
@@ -87,7 +90,7 @@
     }
   });
 
-  // Bouton pour activer/désactiver le mode édition
+  // Bouton édition
   let editing = false;
   const editBtn = document.getElementById('editBtn');
   editBtn.addEventListener('click', () => {
@@ -100,45 +103,88 @@
       editBtn.textContent = "🛠️ Mode édition";
     }
   });
-// Charger les zones sauvegardées
-const saved = localStorage.getItem('zones');
-if (saved) {
-  const geojson = JSON.parse(saved);
-  L.geoJSON(geojson, {
-    onEachFeature: function (feature, layer) {
-      drawnItems.addLayer(layer);
-      layer.on('click', function () {
-        document.getElementById('info').innerHTML = `
-          <h3>Zone sauvegardée</h3>
-          <p>Type : ${feature.geometry.type}</p>
-          <p>Coordonnées :<br><code>${JSON.stringify(feature.geometry.coordinates)}</code></p>
-        `;
-      });
-    }
-  });
-}
 
-  // Événement : création de zone
+  // Sauvegarde des zones
+  function saveZones() {
+    const geojson = drawnItems.toGeoJSON();
+    localStorage.setItem('zones', JSON.stringify(geojson));
+  }
+
+  // Affichage des détails
+  function showZoneDetails(layer) {
+    const name = layer.feature?.properties?.name || "Zone sans nom";
+    const history = layer.feature?.properties?.history || [];
+
+    document.getElementById('info').innerHTML = `
+      <h3>${name}</h3>
+      <button onclick="markAsTondue(layer)">✅ Zone tondue</button>
+      <h4>Historique :</h4>
+      <ul>${history.map(date => `<li>${date}</li>`).join('')}</ul>
+    `;
+  }
+
+  // Marquer comme tondue
+  function markAsTondue(layer) {
+    const now = new Date().toLocaleString();
+    if (!layer.feature.properties.history) {
+      layer.feature.properties.history = [];
+    }
+    layer.feature.properties.history.push(now);
+    saveZones();
+    showZoneDetails(layer);
+  }
+
+  // Création de zone
   map.on('draw:created', function (e) {
     const layer = e.layer;
+    const zoneName = prompt("Nom de la zone ?");
+    if (!zoneName) return;
+
+    layer.feature = {
+      type: "Feature",
+      properties: {
+        name: zoneName,
+        history: []
+      }
+    };
+
     drawnItems.addLayer(layer);
+    saveZones();
+    showZoneDetails(layer);
+    layer.on('click', () => showZoneDetails(layer));
+  });
 
-    // Affiche les coordonnées dans le panneau info
-    const coords = layer.getLatLngs();
-    document.getElementById('info').innerHTML = `
-      <h3>Nouvelle zone</h3>
-      <p>Type : ${e.layerType}</p>
-      <p>Coordonnées :<br><code>${JSON.stringify(coords)}</code></p>
-    `;
-
-    // Ajoute un événement au clic sur la zone
-    layer.on('click', function () {
-      document.getElementById('info').innerHTML = `
-        <h3>Zone personnalisée</h3>
-        <p>Type : ${e.layerType}</p>
-        <p>Coordonnées :<br><code>${JSON.stringify(layer.getLatLngs())}</code></p>
-      `;
+  // Chargement des zones sauvegardées
+  const saved = localStorage.getItem('zones');
+  if (saved) {
+    const geojson = JSON.parse(saved);
+    L.geoJSON(geojson, {
+      onEachFeature: function (feature, layer) {
+        drawnItems.addLayer(layer);
+        layer.on('click', () => showZoneDetails(layer));
+      }
     });
+  }
+
+  // Export GeoJSON
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    const geojson = drawnItems.toGeoJSON();
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojson));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", "zones-tonte.geojson");
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  });
+
+  // Réinitialiser les zones
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    if (confirm("Supprimer toutes les zones ?")) {
+      drawnItems.clearLayers();
+      localStorage.removeItem('zones');
+      document.getElementById('info').innerHTML = "Toutes les zones ont été supprimées.";
+    }
   });
 </script>
 
