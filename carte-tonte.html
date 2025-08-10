@@ -70,6 +70,14 @@
       width: 24px;
       height: 24px;
     }
+
+    input[type="text"] {
+      padding: 6px;
+      font-size: 14px;
+      margin-bottom: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
@@ -82,14 +90,14 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     // Initialisation de la carte
-    const map = L.map('map').setView([45.0, 0.0], 13); // À adapter selon ta localisation
+    const map = L.map('map').setView([45.0, 0.0], 13);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Exemple de données GeoJSON
-    const zones = {
+    // Chargement des données depuis localStorage ou initialisation
+    let zonesData = JSON.parse(localStorage.getItem('zones')) || {
       "type": "FeatureCollection",
       "features": [
         {
@@ -118,7 +126,7 @@
     };
 
     // Ajout des zones à la carte
-    const geojsonLayer = L.geoJSON(zones, {
+    const geojsonLayer = L.geoJSON(zonesData, {
       onEachFeature: function (feature, layer) {
         layer.on('click', function () {
           showZoneDetails(layer);
@@ -148,6 +156,12 @@
       showZoneDetails(layer);
     }
 
+    function editZoneName(layer, newName) {
+      layer.feature.properties.name = newName;
+      saveZones();
+      showZoneDetails(layer);
+    }
+
     function showZoneDetails(layer) {
       const name = layer.feature?.properties?.name || "Zone sans nom";
       const history = layer.feature?.properties?.history || [];
@@ -155,6 +169,10 @@
       const infoDiv = document.getElementById('info');
       infoDiv.innerHTML = `
         <h3>${name}</h3>
+        <input type="text" id="editName" value="${name}" placeholder="Modifier le nom de la zone">
+        <button onclick="editZoneName(layer, document.getElementById('editName').value)">
+          ✏️ Renommer
+        </button>
         <button onclick="markAsTondue(layer)">
           <img src="tondeuse-a-gazon.png" alt="Tondre">
           Tondre cette zone
@@ -167,8 +185,7 @@
     }
 
     function saveZones() {
-      // Tu peux adapter cette fonction pour sauvegarder dans localStorage ou backend
-      console.log("Zones sauvegardées");
+      localStorage.setItem('zones', JSON.stringify(zonesData));
     }
   </script>
 
