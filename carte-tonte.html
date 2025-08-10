@@ -100,6 +100,23 @@
       editBtn.textContent = "🛠️ Mode édition";
     }
   });
+// Charger les zones sauvegardées
+const saved = localStorage.getItem('zones');
+if (saved) {
+  const geojson = JSON.parse(saved);
+  L.geoJSON(geojson, {
+    onEachFeature: function (feature, layer) {
+      drawnItems.addLayer(layer);
+      layer.on('click', function () {
+        document.getElementById('info').innerHTML = `
+          <h3>Zone sauvegardée</h3>
+          <p>Type : ${feature.geometry.type}</p>
+          <p>Coordonnées :<br><code>${JSON.stringify(feature.geometry.coordinates)}</code></p>
+        `;
+      });
+    }
+  });
+}
 
   // Événement : création de zone
   map.on('draw:created', function (e) {
