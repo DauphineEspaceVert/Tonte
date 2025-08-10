@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Suivi des tontes du château</title>
+  <style>
+    body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
+    .zone { background: white; padding: 15px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    button { margin-top: 10px; }
+    textarea { width: 100%; height: 60px; margin-top: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Suivi des tontes</h1>
+  <div id="zones-container"></div>
+
+  <script>
+    let data;
+
+    // Charger le JSON
+    fetch('suivi_tonte.json')
+      .then(response => response.json())
+      .then(json => {
+        data = json;
+        afficherZones(data.zones);
+      });
+
+    function afficherZones(zones) {
+      const container = document.getElementById('zones-container');
+      container.innerHTML = '';
+
+      zones.forEach((zone, index) => {
+        const div = document.createElement('div');
+        div.className = 'zone';
+
+        div.innerHTML = `
+          <h3>${zone.nom}</h3>
+          <p>Date de tonte : <span id="date-${index}">${zone.date_tonte || '—'}</span></p>
+          <textarea id="comment-${index}" placeholder="Commentaire...">${zone.commentaire}</textarea>
+          <button onclick="mettreAJour(${index})">Tondue aujourd’hui</button>
+        `;
+
+        container.appendChild(div);
+      });
+    }
+
+    function mettreAJour(index) {
+      const today = new Date().toISOString().split('T')[0];
+      const commentaire = document.getElementById(`comment-${index}`).value;
+
+      // Mettre à jour les données
+      data.zones[index].date_tonte = today;
+      data.zones[index].commentaire = commentaire;
+
+      // Mettre à jour l'affichage
+      document.getElementById(`date-${index}`).innerText = today;
+
+      console.log("Mise à jour :", data.zones[index]);
+      // Ici tu pourrais envoyer les données vers un serveur ou les sauvegarder
+    }
+  </script>
+</body>
+</html>
