@@ -3,21 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <title>Gestion des zones de tonte</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background-color: #f0f4f8;
       margin: 0;
-      padding: 20px;
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+    }
+
+    #map {
+      flex: 2;
+      height: 100%;
     }
 
     #info {
-      max-width: 400px;
-      background-color: #ffffff;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 16px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      flex: 1;
+      padding: 20px;
+      background-color: #f9f9f9;
+      border-left: 1px solid #ccc;
+      overflow-y: auto;
     }
 
     #info h3 {
@@ -69,12 +74,63 @@
 </head>
 <body>
 
-  <h1>Suivi des tontes</h1>
+  <div id="map"></div>
   <div id="info">
-    <!-- Les détails de la zone sélectionnée s'affichent ici -->
+    <p>📍 Cliquez sur une zone pour voir les détails.</p>
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
+    // Initialisation de la carte
+    const map = L.map('map').setView([45.0, 0.0], 13); // À adapter selon ta localisation
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Exemple de données GeoJSON
+    const zones = {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "properties": {
+            "name": "Zone A",
+            "history": []
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[[0.0, 45.0], [0.01, 45.0], [0.01, 45.01], [0.0, 45.01], [0.0, 45.0]]]
+          }
+        },
+        {
+          "type": "Feature",
+          "properties": {
+            "name": "Zone B",
+            "history": []
+          },
+          "geometry": {
+            "type": "Polygon",
+            "coordinates": [[[0.02, 45.0], [0.03, 45.0], [0.03, 45.01], [0.02, 45.01], [0.02, 45.0]]]
+          }
+        }
+      ]
+    };
+
+    // Ajout des zones à la carte
+    const geojsonLayer = L.geoJSON(zones, {
+      onEachFeature: function (feature, layer) {
+        layer.on('click', function () {
+          showZoneDetails(layer);
+        });
+        layer.setStyle({
+          color: "#3388ff",
+          weight: 2,
+          fillOpacity: 0.4
+        });
+      }
+    }).addTo(map);
+
     function markAsTondue(layer) {
       const now = new Date().toLocaleDateString('fr-FR', {
         weekday: 'long',
@@ -88,8 +144,8 @@
       }
 
       layer.feature.properties.history.push(now);
-      saveZones(); // Sauvegarde dans localStorage ou autre
-      showZoneDetails(layer); // Mise à jour visuelle
+      saveZones();
+      showZoneDetails(layer);
     }
 
     function showZoneDetails(layer) {
@@ -111,11 +167,10 @@
     }
 
     function saveZones() {
-      // À adapter selon ta logique de sauvegarde
+      // Tu peux adapter cette fonction pour sauvegarder dans localStorage ou backend
       console.log("Zones sauvegardées");
     }
   </script>
 
 </body>
 </html>
-
