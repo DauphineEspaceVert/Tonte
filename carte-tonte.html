@@ -2,191 +2,120 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Carte de tonte - Château La Dauphine</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <!-- Leaflet.draw CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
-
+  <title>Gestion des zones de tonte</title>
   <style>
-    body { margin: 0; font-family: sans-serif; }
-    #map { height: 100vh; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f4f8;
+      margin: 0;
+      padding: 20px;
+    }
+
     #info {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: white;
-      padding: 10px;
+      max-width: 400px;
+      background-color: #ffffff;
+      border: 1px solid #ccc;
       border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.3);
-      z-index: 1000;
-      max-width: 300px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
-    .btn {
-      position: absolute;
-      left: 10px;
-      z-index: 1000;
+
+    #info h3 {
+      margin-top: 0;
+      font-size: 20px;
+      color: #333;
+    }
+
+    #info h4 {
+      margin-bottom: 8px;
+      font-size: 16px;
+      color: #555;
+    }
+
+    #info ul {
+      padding-left: 20px;
+      margin-top: 0;
+    }
+
+    #info li {
+      margin-bottom: 4px;
+      font-size: 14px;
+      color: #444;
+    }
+
+    button {
+      background-color: #e0ffe0;
+      border: 1px solid #88cc88;
       padding: 8px 12px;
-      background: #0078D7;
-      color: white;
-      border: none;
-      border-radius: 6px;
+      font-size: 16px;
       cursor: pointer;
-      margin-bottom: 5px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      transition: background-color 0.3s;
     }
-    .btn:hover { background: #005fa3; }
-    #editBtn { top: 10px; }
-    #exportBtn { top: 50px; background: #28a745; }
-    #resetBtn { top: 90px; background: #dc3545; }
+
+    button:hover {
+      background-color: #c0f0c0;
+    }
+
+    button img {
+      width: 24px;
+      height: 24px;
+    }
   </style>
 </head>
 <body>
 
-<button id="editBtn" class="btn">🛠️ Mode édition</button>
-<button id="exportBtn" class="btn">📤 Exporter GeoJSON</button>
-<button id="resetBtn" class="btn">❌ Réinitialiser</button>
-<div id="info">Clique sur une zone pour voir son historique.</div>
-<div id="map"></div>
+  <h1>Suivi des tontes</h1>
+  <div id="info">
+    <!-- Les détails de la zone sélectionnée s'affichent ici -->
+  </div>
 
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<!-- Leaflet.draw JS -->
-<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+  <script>
+    function markAsTondue(layer) {
+      const now = new Date().toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
 
-<script>
-  const map = L.map('map').setView([44.9835, -0.2875], 17);
-
-  // Fond de carte
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
-    maxZoom: 19
-  }).addTo(map);
-
-  // Marqueur principal
-  L.marker([44.9835, -0.2875])
-    .addTo(map)
-    .bindPopup("<b>Château de La Dauphine</b><br>5 Rue Poitevine, Fronsac")
-    .openPopup();
-
-  // Groupe de calques dessinés
-  const drawnItems = new L.FeatureGroup();
-  map.addLayer(drawnItems);
-
-  // Contrôles de dessin
-  const drawControl = new L.Control.Draw({
-    edit: {
-      featureGroup: drawnItems,
-      edit: true,
-      remove: true
-    },
-    draw: {
-      polygon: true,
-      rectangle: true,
-      circle: false,
-      marker: false,
-      polyline: false
-    }
-  });
-
-  // Bouton édition
-  let editing = false;
-  const editBtn = document.getElementById('editBtn');
-  editBtn.addEventListener('click', () => {
-    editing = !editing;
-    if (editing) {
-      map.addControl(drawControl);
-      editBtn.textContent = "❌ Quitter le mode édition";
-    } else {
-      map.removeControl(drawControl);
-      editBtn.textContent = "🛠️ Mode édition";
-    }
-  });
-
-  // Sauvegarde des zones
-  function saveZones() {
-    const geojson = drawnItems.toGeoJSON();
-    localStorage.setItem('zones', JSON.stringify(geojson));
-  }
-
-  // Affichage des détails
-  function showZoneDetails(layer) {
-    const name = layer.feature?.properties?.name || "Zone sans nom";
-    const history = layer.feature?.properties?.history || [];
-
-    document.getElementById('info').innerHTML = `
-      <h3>${name}</h3>
-      <button onclick="markAsTondue(layer)">✅ Zone tondue</button>
-      <h4>Historique :</h4>
-      <ul>${history.map(date => `<li>${date}</li>`).join('')}</ul>
-    `;
-  }
-
-  // Marquer comme tondue
-  function markAsTondue(layer) {
-    const now = new Date().toLocaleString();
-    if (!layer.feature.properties.history) {
-      layer.feature.properties.history = [];
-    }
-    layer.feature.properties.history.push(now);
-    saveZones();
-    showZoneDetails(layer);
-  }
-
-  // Création de zone
-  map.on('draw:created', function (e) {
-    const layer = e.layer;
-    const zoneName = prompt("Nom de la zone ?");
-    if (!zoneName) return;
-
-    layer.feature = {
-      type: "Feature",
-      properties: {
-        name: zoneName,
-        history: []
+      if (!layer.feature.properties.history) {
+        layer.feature.properties.history = [];
       }
-    };
 
-    drawnItems.addLayer(layer);
-    saveZones();
-    showZoneDetails(layer);
-    layer.on('click', () => showZoneDetails(layer));
-  });
-
-  // Chargement des zones sauvegardées
-  const saved = localStorage.getItem('zones');
-  if (saved) {
-    const geojson = JSON.parse(saved);
-    L.geoJSON(geojson, {
-      onEachFeature: function (feature, layer) {
-        drawnItems.addLayer(layer);
-        layer.on('click', () => showZoneDetails(layer));
-      }
-    });
-  }
-
-  // Export GeoJSON
-  document.getElementById('exportBtn').addEventListener('click', () => {
-    const geojson = drawnItems.toGeoJSON();
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(geojson));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "zones-tonte.geojson");
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-  });
-
-  // Réinitialiser les zones
-  document.getElementById('resetBtn').addEventListener('click', () => {
-    if (confirm("Supprimer toutes les zones ?")) {
-      drawnItems.clearLayers();
-      localStorage.removeItem('zones');
-      document.getElementById('info').innerHTML = "Toutes les zones ont été supprimées.";
+      layer.feature.properties.history.push(now);
+      saveZones(); // Sauvegarde dans localStorage ou autre
+      showZoneDetails(layer); // Mise à jour visuelle
     }
-  });
-</script>
+
+    function showZoneDetails(layer) {
+      const name = layer.feature?.properties?.name || "Zone sans nom";
+      const history = layer.feature?.properties?.history || [];
+
+      const infoDiv = document.getElementById('info');
+      infoDiv.innerHTML = `
+        <h3>${name}</h3>
+        <button onclick="markAsTondue(layer)">
+          <img src="tondeuse-a-gazon.png" alt="Tondre">
+          Tondre cette zone
+        </button>
+        <h4>Historique des tontes :</h4>
+        <ul>
+          ${history.map(date => `<li>${date}</li>`).join('')}
+        </ul>
+      `;
+    }
+
+    function saveZones() {
+      // À adapter selon ta logique de sauvegarde
+      console.log("Zones sauvegardées");
+    }
+  </script>
 
 </body>
 </html>
+
